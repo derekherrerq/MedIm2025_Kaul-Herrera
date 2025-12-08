@@ -1,0 +1,388 @@
+"""
+streamlit gui for virtual x-ray simulation
+interactive interface for exploring x-ray imaging parameters
+"""
+
+import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
+from xray_simulator import XRaySimulator
+from image_metrics import ImageMetrics
+from visualization import XRayVisualizer
+import io
+
+
+# page configuration
+st.set_page_config(
+    page_title="Virtual X-Ray Simulator",
+    page_icon="🩻",
+    layout="wide"
+)
+
+# initialize simulator
+@st.cache_resource
+def get_simulator():
+    return XRaySimulator(image_size=(512, 512))
+
+simulator = get_simulator()
+visualizer = XRayVisualizer()
+
+# title and description
+st.title("🩻 Virtual X-Ray Simulation System")
+st.markdown("""
+This application simulates x-ray imaging using the Beer-Lambert law. 
+Adjust parameters to see how they affect the resulting x-ray image and quality metrics.
+""")
+
+# sidebar for parameters
+st.sidebar.header("Simulation Parameters")
+
+# phantom selection
+phantom_type = st.sidebar.selectbox(
+    "Phantom Type",
+    ["2D Test Phantom", "3D Leg Phantom"],
+    help="Choose between a 2D test phantom with geometric shapes or a 3D cylindrical leg phantom"
+)
+
+# x-ray energy
+energy = st.sidebar.slider(
+    "X-Ray Energy (keV)",
+    min_value=20.0,
+    max_value=150.0,
+    value=60.0,
+    step=5.0,
+    help="Higher energies penetrate more but reduce contrast"
+)
+
+# geometry parameters
+st.sidebar.subheader("Geometric Parameters")
+
+source_distance = st.sidebar.slider(
+    "Source Distance (cm)",
+    min_value=50.0,
+    max_value=200.0,
+    value=100.0,
+    step=10.0,
+    help="Distance from x-ray source to reference plane"
+)
+
+object_distance = st.sidebar.slider(
+    "Object Distance (cm)",
+    min_value=20.0,
+    max_value=150.0,
+    value=50.0,
+    step=5.0,
+    help="Distance from source to object (phantom)"
+)
+
+film_distance = st.sidebar.slider(
+    "Film Distance (cm)",
+    min_value=60.0,
+    max_value=250.0,
+    value=150.0,
+    step=10.0,
+    help="Distance from source to detector/film"
+)
+
+# beam angle
+beam_angle = st.sidebar.slider(
+    "Beam Angle (degrees)",
+    min_value=-45.0,
+    max_value=45.0,
+    value=0.0,
+    step=5.0,
+    help="Angle of x-ray beam (0 = perpendicular)"
+)
+
+# noise level
+noise_level = st.sidebar.slider(
+    "Noise Level",
+    min_value=0.0,
+    max_value=0.05,
+    value=0.01,
+    step=0.005,
+    help="Amount of noise to add (simulates quantum noise)"
+)
+
+# fracture parameters (only for 3d leg phantom)
+fracture = False
+fracture_angle = 0.0
+fracture_width = 2.0
+
+if phantom_type == "3D Leg Phantom":
+    st.sidebar.subheader("Fracture Parameters")
+    fracture = st.sidebar.checkbox("Include Fracture", value=False)
+    
+    if fracture:
+        fracture_angle = st.sidebar.slider(
+            "Fracture Angle (degrees)",
+            min_value=-45.0,
+            max_value=45.0,
+            value=0.0,
+            step=5.0,
+            help="Angle of the fracture line"
+        )
+        
+        fracture_width = st.sidebar.slider(
+            "Fracture Width (pixels)",
+            min_value=1.0,
+            max_value=10.0,
+            value=2.0,
+            step=0.5,
+            help="Width of the fracture gap"
+        )
+
+# run simulation button
+run_simulation = st.sidebar.button("🔄 Run Simulation", type="primary")
+
+# main content area
+if run_simulation or 'last_image' not in st.session_state:
+    with st.spinner("Running simulation..."):
+        # determine phantom type string
+        phantom_type_str = "2d_test" if phantom_type == "2D Test Phantom" else "3d_leg"
+        
+        # run simulation
+        phantom, xray_image = simulator.simulate_xray(
+            phantom_type=phantom_type_str,
+            energy=energy,
+            source_distance=source_distance,
+            object_distance=object_distance,
+            film_distance=film_distance,
+            beam_angle=beam_angle,
+            fracture=fracture,
+            fracture_angle=fracture_angle,
+            fracture_width=fracture_width,
+            noise_level=noise_level
+        )
+        
+        # store in session state
+        st.session_state.last_phantom = phantom
+        st.session_state.last_image = xray_image
+        st.session_state.last_params = {
+            'phantom_type': phantom_type,
+            'energy': energy,
+            'source_distance': source_distance,
+            'object_distance': object_distance,
+            'film_distance': film_distance,
+            'beam_angle': beam_angle,
+            'noise_level': noise_level,
+            'fracture': fracture,
+            'fracture_angle': fracture_angle,
+            'fracture_width': fracture_width
+        }
+
+# display results if available
+if 'last_image' in st.session_state:
+    phantom = st.session_state.last_phantom
+    xray_image = st.session_state.last_image
+    params = st.session_state.last_params
+    
+    # create tabs for different views
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Results", "📈 Intensity Profiles", "📉 Metrics", "ℹ️ Information"])
+    
+    with tab1:
+        st.header("Simulation Results")
+        
+        # display phantom and x-ray side by side
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Phantom (Material Map)")
+            fig1, ax1 = plt.subplots(figsize=(6, 6))
+            im1 = ax1.imshow(phantom, cmap='viridis', interpolation='nearest')
+            ax1.axis('off')
+            plt.colorbar(im1, ax=ax1, label='Material Type')
+            st.pyplot(fig1)
+            plt.close()
+            
+        with col2:
+            st.subheader("X-Ray Image")
+            fig2, ax2 = plt.subplots(figsize=(6, 6))
+            im2 = ax2.imshow(xray_image, cmap='gray', interpolation='bilinear')
+            ax2.axis('off')
+            plt.colorbar(im2, ax=ax2, label='Intensity')
+            st.pyplot(fig2)
+            plt.close()
+        
+        # display current parameters
+        st.subheader("Current Parameters")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Energy", f"{params['energy']:.0f} keV")
+            st.metric("Source Distance", f"{params['source_distance']:.0f} cm")
+            st.metric("Beam Angle", f"{params['beam_angle']:.0f}°")
+        
+        with col2:
+            st.metric("Object Distance", f"{params['object_distance']:.0f} cm")
+            st.metric("Film Distance", f"{params['film_distance']:.0f} cm")
+            magnification = params['film_distance'] / params['object_distance']
+            st.metric("Magnification", f"{magnification:.2f}x")
+        
+        with col3:
+            st.metric("Noise Level", f"{params['noise_level']:.3f}")
+            if params['fracture']:
+                st.metric("Fracture Angle", f"{params['fracture_angle']:.0f}°")
+                st.metric("Fracture Width", f"{params['fracture_width']:.1f} px")
+    
+    with tab2:
+        st.header("Intensity Profiles")
+        
+        # horizontal profile
+        st.subheader("Horizontal Profile (Center)")
+        h_position = xray_image.shape[0] // 2
+        h_profile = xray_image[h_position, :]
+        
+        fig3, (ax3a, ax3b) = plt.subplots(1, 2, figsize=(14, 4))
+        
+        ax3a.imshow(xray_image, cmap='gray')
+        ax3a.axhline(y=h_position, color='r', linestyle='--', linewidth=2)
+        ax3a.set_title('Image with Profile Line')
+        ax3a.axis('off')
+        
+        ax3b.plot(h_profile, linewidth=2)
+        ax3b.set_xlabel('Horizontal Position (pixels)')
+        ax3b.set_ylabel('Intensity')
+        ax3b.set_title('Horizontal Intensity Profile')
+        ax3b.grid(True, alpha=0.3)
+        
+        st.pyplot(fig3)
+        plt.close()
+        
+        # vertical profile
+        st.subheader("Vertical Profile (Center)")
+        v_position = xray_image.shape[1] // 2
+        v_profile = xray_image[:, v_position]
+        
+        fig4, (ax4a, ax4b) = plt.subplots(1, 2, figsize=(14, 4))
+        
+        ax4a.imshow(xray_image, cmap='gray')
+        ax4a.axvline(x=v_position, color='r', linestyle='--', linewidth=2)
+        ax4a.set_title('Image with Profile Line')
+        ax4a.axis('off')
+        
+        ax4b.plot(v_profile, linewidth=2)
+        ax4b.set_xlabel('Vertical Position (pixels)')
+        ax4b.set_ylabel('Intensity')
+        ax4b.set_title('Vertical Intensity Profile')
+        ax4b.grid(True, alpha=0.3)
+        
+        st.pyplot(fig4)
+        plt.close()
+    
+    with tab3:
+        st.header("Image Quality Metrics")
+        
+        # calculate metrics
+        metrics = ImageMetrics.get_all_metrics(xray_image)
+        
+        # display metrics in columns
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Contrast", f"{metrics['contrast']:.4f}")
+            st.metric("Mean Intensity", f"{metrics['mean_intensity']:.4f}")
+        
+        with col2:
+            st.metric("Variance of Laplacian", f"{metrics['variance_of_laplacian']:.4f}")
+            st.metric("Gradient Entropy", f"{metrics['gradient_entropy']:.4f}")
+        
+        with col3:
+            st.metric("Edge Strength", f"{metrics['edge_strength']:.4f}")
+            st.metric("Std Intensity", f"{metrics['std_intensity']:.4f}")
+        
+        # metrics explanation
+        st.subheader("Metrics Explanation")
+        st.markdown("""
+        - **Contrast**: Measure of intensity difference between regions (higher = better differentiation)
+        - **Variance of Laplacian**: Measure of image sharpness (higher = sharper edges)
+        - **Gradient Entropy**: Measure of edge information content (higher = more detail)
+        - **Edge Strength**: Average magnitude of edges in the image
+        - **Mean/Std Intensity**: Basic intensity statistics
+        """)
+        
+        # fracture-specific metrics if applicable
+        if params['fracture'] and params['phantom_type'] == "3D Leg Phantom":
+            st.subheader("Fracture Visibility Metrics")
+            
+            # define fracture region (center of image)
+            h, w = xray_image.shape
+            margin = 20
+            fracture_region = (h//2 - margin, h//2 + margin, w//2 - margin, w//2 + margin)
+            
+            fracture_metrics = ImageMetrics.calculate_fracture_visibility(
+                xray_image, fracture_region
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Fracture Contrast", f"{fracture_metrics['fracture_contrast']:.4f}")
+                st.metric("Fracture Sharpness", f"{fracture_metrics['fracture_sharpness']:.4f}")
+            
+            with col2:
+                st.metric("Fracture Edge Strength", f"{fracture_metrics['fracture_edge_strength']:.4f}")
+                intensity_diff = abs(fracture_metrics['fracture_mean_intensity'] - 
+                                   fracture_metrics['surrounding_mean_intensity'])
+                st.metric("Intensity Difference", f"{intensity_diff:.4f}")
+    
+    with tab4:
+        st.header("System Information")
+        
+        st.subheader("About This Simulation")
+        st.markdown("""
+        This virtual x-ray simulator models x-ray imaging using the **Beer-Lambert Law**:
+        
+        $$I = I_0 \\cdot e^{-\\mu d}$$
+        
+        Where:
+        - $I$ = transmitted intensity
+        - $I_0$ = initial intensity
+        - $\\mu$ = linear attenuation coefficient
+        - $d$ = material thickness
+        
+        The simulator accounts for:
+        - Material-specific attenuation at different energies
+        - Geometric magnification effects
+        - Beam angle variations
+        - Quantum noise
+        - Fracture modeling (for 3D leg phantom)
+        """)
+        
+        st.subheader("Parameter Effects")
+        st.markdown("""
+        **Energy**: 
+        - Higher energy → more penetration, less contrast
+        - Lower energy → less penetration, higher contrast
+        
+        **Distances**:
+        - Magnification = Film Distance / Object Distance
+        - Larger magnification → bigger but potentially blurrier image
+        
+        **Beam Angle**:
+        - Non-zero angles distort the projected image
+        - Useful for visualizing 3D structure from different perspectives
+        
+        **Fracture Parameters**:
+        - Fracture width affects visibility
+        - Fracture angle changes appearance in projection
+        """)
+        
+        st.subheader("Attenuation Coefficients")
+        st.markdown(f"""
+        Current energy: **{params['energy']:.0f} keV**
+        
+        - Air: {simulator.get_attenuation_coefficient('air', params['energy']):.5f} cm⁻¹
+        - Soft Tissue: {simulator.get_attenuation_coefficient('soft_tissue', params['energy']):.4f} cm⁻¹
+        - Bone: {simulator.get_attenuation_coefficient('bone', params['energy']):.4f} cm⁻¹
+        """)
+
+else:
+    st.info("👈 Click 'Run Simulation' in the sidebar to generate an x-ray image")
+
+# footer
+st.sidebar.markdown("---")
+st.sidebar.markdown("""
+**Virtual X-Ray Simulator**  
+Medical Imaging Project 2025  
+Authors: Amber Kaul & Derek Herrera
+""")
