@@ -25,20 +25,30 @@ Expected output: "✓ Installation successful"
 RUNNING THE CODE
 ================
 
-OPTION A: Interactive GUI
---------------------------
+OPTION A: Interactive GUI (Exploration & Individual Testing)
+-------------------------------------------------------------
 streamlit run gui_app.py
 
+USE WHEN:
+- Exploring how individual parameters affect x-ray images in real-time
+- Creating specific x-ray images with custom settings
+
+FEATURES:
 - Opens browser automatically at http://localhost:8501
 - Adjust parameters in left sidebar (energy, distances, angles)
 - Click "Run Simulation" to generate x-rays
 - View results in tabs: Images, Profiles, Metrics
 - Experiment with 2D test phantom or 3D leg phantom with fractures
 
-OPTION B: Generate All Results (Batch Analysis)
-------------------------------------------------
+OPTION B: Batch Analysis (Comprehensive Parameter Studies)
+-----------------------------------------------------------
 python batch_analysis.py
 
+USE WHEN:
+- Analyzing how parameters systematically affect results across multiple settings
+- Generating comparison plots and CSV data for reports
+
+OUTPUTS:
 - Creates 'results/' folder with ~17 output files
 - Generates parameter sweep analyses (energy, distance, angle, fracture)
 - Creates CSV files with quantitative metrics
@@ -51,13 +61,18 @@ Expected outputs in results/:
 - angle_sweep_comparison.png + metrics (png + csv)
 - fracture_width/angle_comparison.png + metrics.csv
 
-OPTION C: Custom Python Script
--------------------------------
-from xray_simulator import XRaySimulator
+OPTION C: Requirement Validation
+-------------------------------------------------------
+Validate specific project requirements:
 
-simulator = XRaySimulator(image_size=(512, 512))
-phantom, xray = simulator.simulate_xray(
-    phantom_type='3d_leg', energy=60, fracture=True)
+python test_phantom_validation.py
+
+USE WHEN:
+- Demonstrating Requirement #4 (test phantom validation)
+- Need explicit proof that algorithms work with distance/angle/attenuation changes
+
+OUTPUTS:
+- Creates 'validation_results/' folder
 
 MODEL TRAINING
 --------------
