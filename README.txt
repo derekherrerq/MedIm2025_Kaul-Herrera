@@ -44,8 +44,8 @@ INTERACTIVE GUI (PRIMARY APPLICATION)
 --------------------------------------
 Run the Streamlit-based GUI from the project root:
 
-    streamlit run ProjectFunctions/gui_app.py
-    
+    streamlit run MedIm2025_Code_Kaul-Herrera/ProjectFunctions/gui_app.py
+
 FEATURES:
 - Opens browser automatically at http://localhost:8501
 - Adjust parameters in left sidebar (energy, distances, angles)
@@ -59,10 +59,10 @@ RUNNING INDIVIDUAL SCRIPTS
 ---------------------------
 The following scripts can be run directly from the command line:
 
-    python ProjectFunctions/test_simulator.py
-    python ProjectFunctions/batch_analysis.py
-    python ProjectFunctions/xray_simulator.py
-    python ProjectFunctions/visualization.py
+    python MedIm2025_Code_Kaul-Herrera/ProjectFunctions/test_simulator.py
+    python MedIm2025_Code_Kaul-Herrera/ProjectFunctions/batch_analysis.py
+    python MedIm2025_Code_Kaul-Herrera/ProjectFunctions/xray_simulator.py
+    python MedIm2025_Code_Kaul-Herrera/ProjectFunctions/visualization.py
 
 MODEL EVALUATION
 ----------------
@@ -72,23 +72,6 @@ Image quality evaluated via built-in metrics:
 - Edge Strength
 
 Run batch_analysis.py to compare metrics across different simulation parameters.
-
-PROJECT STRUCTURE
------------------
-MedIm2025_Kaul-Herrera/
-    gui_app.py              Main Streamlit interface
-    batch_analysis.py       Batch simulation driver
-    test_simulator.py       Simulator test script
-    xray_simulator.py       Core x-ray simulation logic
-    visualization.py        Plotting utilities
-    image_metrics.py        Metric calculations
-    ProjectFunctions/
-        image_metrics.py
-        visualization.py
-        __pycache__/
-    requirements.txt
-    README.md
-    .venv/                  Virtual environment (ignored by Git)
 
 GIT NOTES
 ---------
