@@ -461,57 +461,82 @@ if 'show_batch' in st.session_state and st.session_state.show_batch:
         
         # Fracture Analysis
         st.subheader("4. Fracture Parameter Analysis")
-        
+
+        # fracture width sweep data
+        fracture_widths = [1.0, 2.0, 3.0, 5.0]
+        width_images = []
+        width_labels = []
+        width_metrics = []
+
+        for width in fracture_widths:
+            _, img = simulator.simulate_xray(
+                phantom_type="3d_leg",
+                energy=60.0,
+                fracture=True,
+                fracture_width=width,
+                fracture_angle=0.0,
+                noise_level=0.01
+            )
+            width_images.append(img)
+            width_labels.append(f"Width={width}px")
+
+            h, w = img.shape
+            margin = 20
+            fracture_region = (h//2 - margin, h//2 + margin, w//2 - margin, w//2 + margin)
+            width_metrics.append(ImageMetrics.calculate_fracture_visibility(img, fracture_region))
+
+        # fracture angle sweep data
+        fracture_angles = [0, 15, 30, 45]
+        fangle_images = []
+        fangle_labels = []
+        fangle_metrics = []
+
+        for fa in fracture_angles:
+            _, img = simulator.simulate_xray(
+                phantom_type="3d_leg",
+                energy=60.0,
+                fracture=True,
+                fracture_width=2.0,
+                fracture_angle=fa,
+                noise_level=0.01
+            )
+            fangle_images.append(img)
+            fangle_labels.append(f"Angle={fa}°")
+
+            h, w = img.shape
+            margin = 20
+            fracture_region = (h//2 - margin, h//2 + margin, w//2 - margin, w//2 + margin)
+            fangle_metrics.append(ImageMetrics.calculate_fracture_visibility(img, fracture_region))
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.write("**Fracture Width Comparison**")
-            fracture_widths = [1.0, 2.0, 3.0, 5.0]
-            width_images = []
-            width_labels = []
-            
-            for width in fracture_widths:
-                _, img = simulator.simulate_xray(
-                    phantom_type="3d_leg",
-                    energy=60.0,
-                    fracture=True,
-                    fracture_width=width,
-                    fracture_angle=0.0,
-                    noise_level=0.01
-                )
-                width_images.append(img)
-                width_labels.append(f"Width={width}px")
-            
             fig8 = visualizer.plot_parameter_comparison(width_images, width_labels,
                                                         "Fracture Width Comparison")
             st.pyplot(fig8)
             plt.close()
-        
+
         with col2:
             st.write("**Fracture Angle Comparison**")
-            fracture_angles = [0, 15, 30, 45]
-            fangle_images = []
-            fangle_labels = []
-            
-            for fa in fracture_angles:
-                _, img = simulator.simulate_xray(
-                    phantom_type="3d_leg",
-                    energy=60.0,
-                    fracture=True,
-                    fracture_width=2.0,
-                    fracture_angle=fa,
-                    noise_level=0.01
-                )
-                fangle_images.append(img)
-                fangle_labels.append(f"Angle={fa}°")
-            
             fig9 = visualizer.plot_parameter_comparison(fangle_images, fangle_labels,
                                                         "Fracture Angle Comparison")
             st.pyplot(fig9)
             plt.close()
-    
+
+        st.write("**Fracture Sweep Metrics**")
+        fig10 = visualizer.plot_fracture_sweep_results(
+            fracture_widths=fracture_widths,
+            width_metrics=width_metrics,
+            fracture_angles=fracture_angles,
+            angle_metrics=fangle_metrics,
+            title="Fracture Sweep Metrics"
+        )
+        st.pyplot(fig10)
+        plt.close()
+
     st.success("Complete batch analysis finished!")
-    
+
     # Reset flag
     if st.button("Close Batch Results"):
         st.session_state.show_batch = False

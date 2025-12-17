@@ -340,6 +340,83 @@ class XRayVisualizer:
         return fig
     
     @staticmethod
+    def plot_fracture_sweep_results(fracture_widths: List[float] = None,
+                                   width_metrics: List[Dict[str, float]] = None,
+                                   fracture_angles: List[float] = None,
+                                   angle_metrics: List[Dict[str, float]] = None,
+                                   title: str = "Fracture Sweep Metrics") -> Figure:
+        """
+        plot fracture-specific metrics for width and angle sweeps.
+        
+        args:
+            fracture_widths: list of tested fracture widths
+            width_metrics: list of metric dicts for each width
+            fracture_angles: list of tested fracture angles
+            angle_metrics: list of metric dicts for each angle
+            title: plot title
+            
+        returns:
+            matplotlib figure
+        """
+        sections = []
+        
+        if fracture_widths and width_metrics:
+            sections.append({
+                'label': 'Fracture Width (px)',
+                'values': fracture_widths,
+                'metrics': width_metrics,
+                'title': 'Width Sweep',
+                'color': '#1f77b4',
+                'marker': 'o'
+            })
+        
+        if fracture_angles and angle_metrics:
+            sections.append({
+                'label': 'Fracture Angle (deg)',
+                'values': fracture_angles,
+                'metrics': angle_metrics,
+                'title': 'Angle Sweep',
+                'color': '#ff7f0e',
+                'marker': 's'
+            })
+        
+        if not sections:
+            raise ValueError("No fracture sweep data provided for plotting.")
+        
+        metric_config = [
+            ('fracture_contrast', 'Fracture Contrast'),
+            ('fracture_sharpness', 'Fracture Sharpness'),
+            ('fracture_edge_strength', 'Fracture Edge Strength')
+        ]
+        
+        rows = len(sections)
+        cols = len(metric_config)
+        fig, axes = plt.subplots(rows, cols, figsize=(5.5 * cols, 4 * rows))
+        
+        if rows == 1:
+            axes = [axes]
+        
+        for row_idx, section in enumerate(sections):
+            axes_row = axes[row_idx]
+            for col_idx, (metric_key, ylabel) in enumerate(metric_config):
+                ax = axes_row[col_idx]
+                metric_values = [m.get(metric_key, 0.0) for m in section['metrics']]
+                ax.plot(section['values'], metric_values,
+                        marker=section['marker'],
+                        linewidth=2,
+                        markersize=7,
+                        color=section['color'])
+                ax.set_xlabel(section['label'])
+                ax.set_ylabel(ylabel)
+                ax.set_title(f"{section['title']} - {ylabel}")
+                ax.grid(True, alpha=0.3)
+        
+        fig.suptitle(title, fontsize=16, fontweight='bold')
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        
+        return fig
+    
+    @staticmethod
     def save_figure(fig: Figure, filename: str, dpi: int = 300):
         """
         save figure to file.

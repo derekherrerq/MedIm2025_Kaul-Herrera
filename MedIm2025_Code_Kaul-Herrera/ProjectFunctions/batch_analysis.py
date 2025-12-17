@@ -311,16 +311,27 @@ class BatchAnalysis:
                                                             "Fracture Width Comparison")
             output_path1 = os.path.join(self.output_dir, "fracture_width_comparison.png")
             self.visualizer.save_figure(fig1, output_path1)
-            
+
             # visualize angle comparison
             angle_labels = [f"Angle={a}°" for a in fracture_angles]
             fig2 = self.visualizer.plot_parameter_comparison(angle_images, angle_labels,
                                                             "Fracture Angle Comparison")
             output_path2 = os.path.join(self.output_dir, "fracture_angle_comparison.png")
             self.visualizer.save_figure(fig2, output_path2)
-            
+
+            # summarize fracture metrics across sweeps
+            fig3 = self.visualizer.plot_fracture_sweep_results(
+                fracture_widths=fracture_widths,
+                width_metrics=width_metrics,
+                fracture_angles=fracture_angles,
+                angle_metrics=angle_metrics,
+                title="Fracture Sweep Metrics"
+            )
+            output_path3 = os.path.join(self.output_dir, "fracture_sweep_metrics.png")
+            self.visualizer.save_figure(fig3, output_path3)
+
             print(f"Saved fracture analysis to {self.output_dir}")
-            
+
             # save metrics to csv
             df_width = pd.DataFrame(width_metrics)
             df_width['fracture_width_px'] = fracture_widths
